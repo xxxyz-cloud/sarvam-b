@@ -82,7 +82,9 @@ const COMBINED_PROMPT = (text, language) => {
 
 {
   "structured": {
+    "condition": "disease or condition name e.g. Typhoid Fever, Dengue, Post-operative Recovery",
     "medicines": [{"name":"","dosage":"","timing":"","duration":"","instructions":""}],
+    "medicineVerification": "one sentence: do these medicines match the condition? flag anything unusual or missing.",
     "dietEat":             ["specific food to eat"],
     "dietAvoid":           ["specific food to avoid"],
     "precautions":         ["physical precaution"],
@@ -393,5 +395,24 @@ export const getPlan = async (req, res) => {
     res.json({ success: true, plan: { ...planObj, audioChunks } });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/discharge/medicine-image?name=Azithromycin
+// Proxies NIH RxImage so the browser doesn't hit CORS/DNS issues directly
+export const getMedicineImage = async (req, res) => {
+  const { name } = req.query;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+
+  try {
+    const response = await axios.get(
+      `https://rximage.nlm.nih.gov/api/rximage/1/rxnav?name=${encodeURIComponent(name)}&resolution=600`,
+      { timeout: 5000 }
+    );
+    const imageUrl = response.data?.nlmRxImages?.[0]?.imageUrl ?? null;
+    res.json({ imageUrl });
+  } catch {
+    // Not found or API down — return null gracefully, frontend shows emoji fallback
+    res.json({ imageUrl: null });
   }
 };
